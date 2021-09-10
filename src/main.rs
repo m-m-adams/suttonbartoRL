@@ -8,10 +8,36 @@ const RET_2ND: f64 = 4.;
 #[derive(Index, IndexMut, Debug)]
 struct StateValue([[f64; MAX_CARS + 1]; MAX_CARS + 1]);
 
+impl std::fmt::Display for StateValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut output = String::new();
+        for row in self.0.into_iter() {
+            for entry in row.into_iter() {
+                output.push_str(&format!("{:^5.2}, ", entry));
+            }
+            output.push_str(&format!("\n"));
+        }
+        write!(f, "{}", output)
+    }
+}
+
 struct State(i32, i32);
 
 #[derive(Index, IndexMut, Debug)]
 struct StatePolicy([[Action; MAX_CARS + 1]; MAX_CARS + 1]);
+
+impl std::fmt::Display for StatePolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut output = String::new();
+        for row in self.0 {
+            for entry in row {
+                output.push_str(&format!("{:^3}, ", entry));
+            }
+            output.push_str(&format!("\n"));
+        }
+        write!(f, "{}", output)
+    }
+}
 
 type Action = i32;
 
@@ -45,15 +71,17 @@ impl PolicyIterator {
 
         let mut result = 0f64;
         //cost of moving each car
-        result -= 0.0 * (action as f64).abs();
+        result -= 2. * (action as f64).abs();
 
         //set the number of cars in each lot after move
-        let mut n1st: i32 = cmp::min(state.0 - action, MAX_CARS as i32);
-        let mut n2nd: i32 = cmp::min(state.1 + action, MAX_CARS as i32);
-
+        let n1st: i32 = cmp::min(state.0 - action, MAX_CARS as i32);
+        let n2nd: i32 = cmp::min(state.1 + action, MAX_CARS as i32);
+        assert!(n1st >= 0 && n2nd >= 0);
+        let mut renting_result = 0.;
         for req1 in 0..10 {
             for req2 in 0..10 {
-                let p = poisson(req1 as f64, RET_1ST) * poisson(req2 as f64, RET_2ND);
+                let p = poisson(req1 as f64, 3.) * poisson(req2 as f64, 4.);
+                assert!(p > 0.);
                 //let p = 0.01;
                 //let p = 1.;
                 //check number of valid rentals (rentals where a car is available)
@@ -63,20 +91,21 @@ impl PolicyIterator {
                 let reward = 10.0 * (valid1st + valid2nd) as f64;
 
                 //remove rented cars
-                n1st -= valid1st;
-                n2nd -= valid2nd;
+                let n1st_remaining = n1st - valid1st;
+                let n2nd_remainig = n2nd - valid2nd;
 
                 //return cars
-                let rent_1st = cmp::min((n1st as usize) + 1, MAX_CARS);
-                let rent_2nd = cmp::min((n2nd as usize) + 0, MAX_CARS);
+                let rent_1st = cmp::min((n1st_remaining as usize) + 3, MAX_CARS);
+                let rent_2nd = cmp::min((n2nd_remainig as usize) + 2, MAX_CARS);
 
                 //add reward for renting
-                result += p * (reward + self.values[rent_1st][rent_2nd]);
+                renting_result += p * (reward + 0.9 * self.values[rent_1st][rent_2nd]);
+                assert!(renting_result >= p * (reward + 0.9 * self.values[rent_1st][rent_2nd]))
                 //println!("result is {}", reward)
             }
         }
 
-        result
+        result + renting_result
     }
     fn evaluate(&mut self) {
         let mut delta = 10.0;
@@ -124,15 +153,15 @@ impl PolicyIterator {
     }
 
     fn run(&mut self) {
-        println!("{:?}", self.policy);
+        println!("{}", self.policy);
         self.evaluate();
-        println!("{:?}", self.values);
+        println!("{}", self.values);
         while !self.improve() {
-            println!("{:?}", self.policy);
+            println!("{}", self.policy);
             self.evaluate();
-            println!("{:?}", self.values);
+            println!("{}", self.values);
         }
-        println!("{:?}", self.policy);
+        println!("{}", self.policy);
     }
 }
 
@@ -142,7 +171,7 @@ fn main() {
     let mut piter = PolicyIterator {
         values: StateValue([[0f64; MAX_CARS + 1]; MAX_CARS + 1]),
         policy: StatePolicy([[0i32; MAX_CARS + 1]; MAX_CARS + 1]),
-        threshold: 1f64,
+        threshold: 0.1f64,
     };
 
     piter.run();
