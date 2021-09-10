@@ -11,8 +11,8 @@ struct StateValue([[f64; MAX_CARS + 1]; MAX_CARS + 1]);
 impl std::fmt::Display for StateValue {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut output = String::new();
-        for row in self.0.into_iter() {
-            for entry in row.into_iter() {
+        for row in self.0.iter().rev() {
+            for entry in row {
                 output.push_str(&format!("{:^5.2}, ", entry));
             }
             output.push_str(&format!("\n"));
@@ -29,7 +29,7 @@ struct StatePolicy([[Action; MAX_CARS + 1]; MAX_CARS + 1]);
 impl std::fmt::Display for StatePolicy {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut output = String::new();
-        for row in self.0 {
+        for row in self.0.iter().rev() {
             for entry in row {
                 output.push_str(&format!("{:^3}, ", entry));
             }
@@ -80,8 +80,8 @@ impl PolicyIterator {
         let mut renting_result = 0.;
         for req1 in 0..10 {
             for req2 in 0..10 {
-                let p = poisson(req1 as f64, 3.) * poisson(req2 as f64, 4.);
-                assert!(p > 0.);
+                let p_rentals = poisson(req1 as f64, 3.) * poisson(req2 as f64, 4.);
+                assert!(p_rentals > 0.);
                 //let p = 0.01;
                 //let p = 1.;
                 //check number of valid rentals (rentals where a car is available)
@@ -95,12 +95,18 @@ impl PolicyIterator {
                 let n2nd_remainig = n2nd - valid2nd;
 
                 //return cars
-                let rent_1st = cmp::min((n1st_remaining as usize) + 3, MAX_CARS);
-                let rent_2nd = cmp::min((n2nd_remainig as usize) + 2, MAX_CARS);
+                for ret1 in 0..10 {
+                    for ret2 in 0..10 {
+                        let p_returns = poisson(ret1 as f64, 3.) * poisson(ret2 as f64, 2.);
+                        let rent_1st = cmp::min((n1st_remaining as usize) + ret1, MAX_CARS);
+                        let rent_2nd = cmp::min((n2nd_remainig as usize) + ret2, MAX_CARS);
 
-                //add reward for renting
-                renting_result += p * (reward + 0.9 * self.values[rent_1st][rent_2nd]);
-                assert!(renting_result >= p * (reward + 0.9 * self.values[rent_1st][rent_2nd]))
+                        //add reward for renting
+                        renting_result += p_rentals
+                            * p_returns
+                            * (reward + 0.9 * self.values[rent_1st][rent_2nd]);
+                    }
+                }
                 //println!("result is {}", reward)
             }
         }
@@ -130,7 +136,7 @@ impl PolicyIterator {
                 let aold = self.policy[n1][n2].clone();
                 let mut v = -1000.0;
                 let mut anext = aold;
-                for a in -5..5 {
+                for a in -5..=5 {
                     let vnew = self.rent_cars(State(n1 as i32, n2 as i32), a);
 
                     //println!("action {} in state {},{} had value {}", a, n1, n2, vnew);
@@ -153,20 +159,20 @@ impl PolicyIterator {
     }
 
     fn run(&mut self) {
-        println!("{}", self.policy);
+        //println!("{}", self.policy);
         self.evaluate();
-        println!("{}", self.values);
+        //println!("{}", self.values);
         while !self.improve() {
-            println!("{}", self.policy);
+            //println!("{}", self.policy);
             self.evaluate();
-            println!("{}", self.values);
+            //println!("{}", self.values);
         }
         println!("{}", self.policy);
     }
 }
 
 fn main() {
-    println!("Hello, world!");
+    println!("Running policy iteration");
 
     let mut piter = PolicyIterator {
         values: StateValue([[0f64; MAX_CARS + 1]; MAX_CARS + 1]),
