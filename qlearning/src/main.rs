@@ -127,4 +127,33 @@ impl<'a> Agent<'a> {
     }
 }
 
-fn main() {}
+fn main() {
+    let mut default = HashMap::new();
+    default.insert(Action::Down, 1);
+    default.insert(Action::Left, 1);
+    default.insert(Action::Right, 1);
+    default.insert(Action::Up, 1);
+
+    let gridx: isize = 10;
+    let gridy: isize = 10;
+
+    let terminal = State(8, 8);
+
+    let mut wind = vec![vec![(Action::Left, 0isize); gridy as usize]; gridx as usize];
+
+    wind[6] = vec![(Action::Up, 2); gridy as usize];
+    wind[5] = vec![(Action::Up, 1); gridy as usize];
+    wind[7] = vec![(Action::Up, 1); gridy as usize];
+
+    let mut reward = vec![vec![-1; gridy as usize]; gridx as usize];
+    reward[terminal.0 as usize][terminal.1 as usize] = 1;
+
+    let env = WindyGrid {
+        state: State(0, 0),
+        xsize: gridx,
+        ysize: gridy,
+        wind: wind,
+        reward: reward,
+        terminal: terminal,
+    };
+}
