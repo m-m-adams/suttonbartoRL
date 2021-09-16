@@ -7,3 +7,5 @@ edition = "2018"
 
 [dependencies]
 derive_more = "0.99.16"
+rand = "0.8.4"
+ord_subset = "3.1.1"
