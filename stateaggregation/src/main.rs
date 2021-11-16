@@ -144,7 +144,7 @@ fn main() {
             let a = ag.step(srt);
             terminal = srt.2;
         }
-        println!("{:.2}", ag.weights)
+        println!("{:?}", ag.weights)
     }
 }
 
