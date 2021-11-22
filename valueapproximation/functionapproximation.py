@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from tqdm import tqdm
 from randomwalkenv import RandomWalkEnvironment
 from TDagent import TDAgent
@@ -7,6 +8,9 @@ from TDagent import TDAgent
 def run_experiment(environment, agent, environment_parameters, agent_parameters, experiment_parameters):
     environment = environment()
     agent = agent()
+
+    value_runs = np.zeros(
+        [experiment_parameters["num_runs"], environment_parameters["num_states"]])
 
     env_info = {"num_states": environment_parameters["num_states"],
                 "start_state": environment_parameters["start_state"],
@@ -24,7 +28,8 @@ def run_experiment(environment, agent, environment_parameters, agent_parameters,
     print('Setting - Neural Network with 100 hidden units')
 
     # one agent setting
-    for run in tqdm(range(1, experiment_parameters["num_runs"]+1)):
+    for run in tqdm(range(experiment_parameters["num_runs"])):
+
         env_info["seed"] = run
         agent_info["seed"] = run
         environment.env_init(env_info)
@@ -34,29 +39,28 @@ def run_experiment(environment, agent, environment_parameters, agent_parameters,
             terminal = False
             state = environment.env_start()
             agent.agent_start(state)
+            action = agent.agent_policy(state)
+            (reward, state, terminal) = environment.env_step(action)
             while not terminal:
-
+                agent.agent_step(reward, state)
                 action = agent.agent_policy(state)
 
                 (reward, state, terminal) = environment.env_step(action)
                 # if terminal: print(reward, state)
 
-                agent.agent_step(reward, state)
             agent.agent_end(reward)
 
-            if episode % experiment_parameters["episode_eval_frequency"] == 0:
+            if episode == experiment_parameters["num_episodes"]:
                 current_V = agent.agent_message("get state value")
-            # if last episode
-            elif episode == experiment_parameters["num_episodes"]:
-                current_V = agent.agent_message("get state value")
-        plt.plot(agent.agent_message("get state value"))
-        plt.show()
+        value_runs[run, :] = current_V
+    plt.plot(value_runs.mean(axis=0))
+    plt.show()
 
 
 # Experiment parameters
 experiment_parameters = {
-    "num_runs": 1,
-    "num_episodes": 500,
+    "num_runs": 20,
+    "num_episodes": 1000,
     "episode_eval_frequency": 100  # evaluate every 10 episode
 }
 

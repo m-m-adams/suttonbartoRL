@@ -120,10 +120,10 @@ class TDAgent():
         ### START CODE HERE ###
         last_state = one_hot(self.last_state, self.num_states)
         v_last = self.valuenetwork(last_state.to(self.device))
-        with torch.no_grad():
-            curr_state = one_hot(state, self.num_states)
-            v = self.valuenetwork(curr_state.to(self.device))
-            target = reward + self.gamma*v
+
+        curr_state = one_hot(state, self.num_states)
+        v = self.valuenetwork(curr_state.to(self.device))
+        target = reward + self.gamma*v
 
         #print(v_last, target)
         L = nn.MSELoss()
@@ -157,7 +157,7 @@ class TDAgent():
         v_last = self.valuenetwork(last_state.to(self.device))
 
         L = nn.MSELoss()
-        loss = L(v_last, torch.tensor(reward).to(self.device))
+        loss = L(v_last, torch.tensor([[reward]]).to(self.device))
         loss.backward()
         self.optimizer.step()
 
